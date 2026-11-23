@@ -50,6 +50,10 @@ class Engine:
         return self.asr().transcribe(x, sr, lang)
 
     # ---------- synthesis ----------
+    def synth_ready(self, lora: str | None = None) -> bool:
+        """False when the next `synthesize` must load the model first, which takes minutes."""
+        return self._synth is not None and self._synth[0] == lora
+
     def synthesize(self, text: str, ref_wav, ref_text: str, lora: str | None = None, seed: int = 0,
                    params: dict | None = None):
         """Returns (waveform at 24 kHz, number of generated tokens). `params`: the

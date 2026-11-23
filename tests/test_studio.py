@@ -361,3 +361,27 @@ def test_preview_text_splits_at_sentence_ends_with_or_without_a_space(env, text,
     client.post(f"/api/voices/{vid}/previews", json={"text": text})
     drain()
     assert [c["text"] for c in engine.synth_calls] == sentences
+
+
+def test_a_take_records_its_progress_for_the_page(env):
+    client, _, engine, drain = env
+    vid = create(client).json()["id"]
+    drain()
+    seen = []
+    real = engine.synthesize
+
+    def spy(*a, **kw):   # what the page reads while this sentence is generated
+        p = client.get(f"/api/voices/{vid}").json()["previews"][0]
+        seen.append((p["status"], p["stage"], p["sentence"], p["sentences"]))
+        return real(*a, **kw)
+    engine.synthesize = spy
+    client.post(f"/api/voices/{vid}/previews", json={"text": "ಒಂದು. ಎರಡು."})
+    drain()
+    assert seen == [("running", "speaking", 0, 2), ("running", "speaking", 1, 2)]
+
+
+def test_page_and_script_are_revalidated_on_each_load(env):
+    client = env[0]
+    assert client.get("/").headers["cache-control"] == "no-cache"
+    assert client.get("/static/app.js").headers["cache-control"] == "no-cache"
+    assert "cache-control" not in client.get("/api/config").headers

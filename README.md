@@ -273,14 +273,19 @@ speakers are filtered out, and previews then use the trained adapter.
 voiceclone serve --root studio            # http://127.0.0.1:8000
 ```
 
-Every step has options, in collapsible panels with **All on**, **All off**
-and **Defaults** buttons:
+The page shows a voice as four steps in order: the cleaned sample, the check
+of the words, the text for the voice to say, and training. While a text
+generates, a panel shows the step and the time. Versions of the same text
+stay together, and the earlier versions are in a history row.
+
+Every step has options, under **Advanced options**. Each group has a
+**Reset** button that sets its defaults again:
 
 | Panel | Options |
 |---|---|
-| Cleaning (new voice, or "Clean again") | declip; high-pass and its cut-off; spectral denoise, its strength and noise floor; MossFormer2 enhancement, its mix and super-resolution; peak normalisation |
-| Reference clip | the clearest 3-10 s stretch, or the whole sample (first 15 s) |
-| Generation | instant or trained clone; number of takes and first seed; temperature, top-p, repetition penalty, longest take |
+| Noise cleaning (new voice, or "Clean again") | declip; high-pass and its cut-off; spectral denoise, its strength and noise floor; MossFormer2 enhancement, its mix and super-resolution; peak normalisation |
+| Clip to copy the voice from | the clearest 3-10 s stretch, or the whole sample (first 15 s) |
+| How the voice speaks | the trained voice or the voice from the sample; number of versions and the seed; temperature, top-p, repetition penalty, longest sentence |
 | Training | enhancement of the recordings; speaker-match threshold; pitch gate and its range; epochs, learning rate, LoRA rank, held-out clips, seed |
 
 The defaults are the settings behind the reference results. MossFormer2

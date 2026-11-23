@@ -81,6 +81,15 @@ def create_app(studio: Studio) -> FastAPI:
         except KeyError:
             raise HTTPException(404, "no such voice") from None
 
+    @app.middleware("http")
+    async def revalidate_page(request, call_next):
+        """The page and its script change together. `no-cache` makes the browser ask if its copy is current
+        (a 304 when it is), so a reload never mixes an old page with a new script."""
+        response = await call_next(request)
+        if not request.url.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
     @app.get("/")
     def index():
         return FileResponse(STATIC / "index.html")

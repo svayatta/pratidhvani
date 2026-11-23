@@ -141,16 +141,24 @@ class Studio:
         d = self.store.dir(vid)
         v = self.store.get(vid)
         p = next(p for p in v["previews"] if p["id"] == pid)
-        self._set_preview(vid, pid, status="running")
         lora = v["train"]["adapter"] if p["trained"] else None
+        sentences = split_sentences(p["text"]) or [p["text"]]   # ponytail: one sentence longer than max_sec is still cut
+        # Progress for the page: `stage` is loading, speaking or joining; `sentence` counts the finished sentences.
+        # The model loads inside the first `synthesize` call, so "loading" covers the first sentence too.
+        loaded = getattr(self.engine, "synth_ready", lambda lora: True)(lora)
+        self._set_preview(vid, pid, status="running", stage="speaking" if loaded else "loading",
+                          sentence=0, sentences=len(sentences))
         t0 = time.time()
         gap = np.zeros(int(SENTENCE_GAP_SEC * TTS_SR), np.float32)
         parts = []
-        for sentence in split_sentences(p["text"]) or [p["text"]]:   # ponytail: one sentence longer than max_sec is still cut
+        for i, sentence in enumerate(sentences):
+            if i:
+                self._set_preview(vid, pid, stage="speaking", sentence=i)
             wav, _ = self.engine.synthesize(sentence, d / "reference.wav", v["ref_text"], lora, p["seed"], p.get("params"))
             parts += [gap, wav]
         wav = np.concatenate(parts[1:])
         if len(parts) > 2:
+            self._set_preview(vid, pid, stage="joining", sentence=len(sentences))
             # The pauses carry no mark, and the detector scores the marked share of the file.
             # A join of short takes can thus fall below the threshold. One mark on the join prevents this.
             wav = self.engine.watermark(wav)

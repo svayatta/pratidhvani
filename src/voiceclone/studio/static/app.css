@@ -32,9 +32,9 @@ h3 { font-size: 18px; margin-bottom: 10px; }
 .small { font-size: 13px; }
 [hidden] { display: none !important; }
 
-.shell { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
+.shell { display: grid; grid-template-columns: clamp(220px, 24vw, 260px) 1fr; min-height: 100vh; }
 .side { background: var(--side); border-right: 1px solid var(--line); padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; }
-.brand { font-family: var(--serif); font-size: 21px; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+.brand { font-family: var(--serif); font-size: 21px; font-weight: 600; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
 .mark { width: 26px; height: 26px; display: block; }
 .side-h { font: 600 11px/1 var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
 .voice-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -43,9 +43,38 @@ h3 { font-size: 18px; margin-bottom: 10px; }
 .voice-list button[aria-current="true"] { background: var(--panel); box-shadow: 0 0 0 1px var(--line); }
 .voice-list .vn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.main { padding: 32px clamp(16px, 4vw, 48px) 64px; max-width: 1040px; width: 100%; }
+.main { padding: 22px clamp(16px, 4vw, 48px) 64px; max-width: 1040px; width: 100%; margin: 0 auto; container-type: inline-size; }
 .view { display: flex; flex-direction: column; gap: 18px; }
-.view-head.with-actions { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.view-head.with-actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.view-head.with-actions > div { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+#view-voice { gap: 12px; }
+/* sidebar: the toggle keeps the logo, the toggle and the New voice button, and hides the rest */
+.side #side-body { display: flex; flex-direction: column; gap: 14px; }
+.icon-btn { all: unset; box-sizing: border-box; cursor: pointer; width: 32px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--muted); margin-left: auto; flex: none; }
+.icon-btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.icon-btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+.shell.side-off { grid-template-columns: 64px 1fr; }
+.shell.side-off .side-more { display: none !important; }
+.shell.side-off .side { align-items: center; padding: 20px 8px; }
+/* In the narrow state the logo is the button that opens the sidebar, so the control stays at the top left.
+   The pointer or the keyboard focus changes the logo to the sidebar icon. */
+.logo-btn { all: unset; box-sizing: border-box; display: grid; place-items: center; width: 32px; height: 32px; border-radius: 8px; flex: none; }
+.logo-btn svg { display: none; color: var(--ink); }
+.logo-btn:not(:disabled) { cursor: pointer; }
+.logo-btn:not(:disabled):hover, .logo-btn:not(:disabled):focus-visible { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.logo-btn:not(:disabled):hover .mark, .logo-btn:not(:disabled):focus-visible .mark { display: none; }
+.logo-btn:not(:disabled):hover svg, .logo-btn:not(:disabled):focus-visible svg { display: block; }
+.logo-btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); }
+.shell.side-off #new-voice { width: 36px; height: 36px; padding: 0; font-size: 18px; }
+/* voice screen: the finished steps 1 and 2 are two short rows side by side. An open row takes the full width. */
+.done-row { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.done-row > *, .main { min-width: 0; }   /* a long line in a row must not widen the page */
+.done-row.two { grid-template-columns: 1fr 1fr; }
+.done-row.two:has(> [open]) { grid-template-columns: 1fr; }
+.done-row.two > .fold:not([open]) > summary { padding: 9px 14px; gap: 10px; }
+.done-row.two > .fold:not([open]) > summary b { font-size: 15px; }
+.done-row.two > .fold:not([open]) > summary .why { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.done-row.two > .fold:not([open]) .num { width: 22px; height: 22px; font-size: 11px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
 .form { display: flex; flex-direction: column; gap: 18px; }
 .row { display: flex; gap: 14px; flex-wrap: wrap; }
@@ -55,10 +84,16 @@ h3 { font-size: 18px; margin-bottom: 10px; }
 input, select, textarea { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; width: 100%; }
 input:focus, select:focus, textarea:focus, .drop:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 1px; }
 textarea { resize: vertical; }
+/* The browser draws its own arrow against the edge of the box. This arrow has the same inset as the text. */
+select { -webkit-appearance: none; appearance: none; padding-right: 34px; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%236d655a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m1 1.5 5 5 5-5'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; background-size: 11px 7px; }
+@media (prefers-color-scheme: dark) { select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none' stroke='%23a59c8e' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m1 1.5 5 5 5-5'/%3E%3C/svg%3E"); } }
 
-.split { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-.tips ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
-.drop { border: 1.5px dashed var(--line); border-radius: var(--radius); display: grid; place-items: center; text-align: center; padding: 24px 16px; min-height: 230px; transition: border-color .15s, background .15s; }
+/* New voice: one narrow column, so the eye goes name, sample, button */
+#view-create { max-width: 680px; width: 100%; margin: 0 auto; }
+.tips { margin-top: 10px; font-size: 14px; }
+.tips ul { margin: 8px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; color: var(--muted); }
+.drop { border: 1.5px dashed var(--line); border-radius: var(--radius); display: grid; place-items: center; text-align: center; padding: 24px 16px; min-height: 200px; transition: border-color .15s, background .15s; }
 .drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .drop-title { font-family: var(--serif); font-size: 19px; font-weight: 600; margin: 0 0 2px; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .drop-actions { display: flex; gap: 10px; justify-content: center; margin: 14px 0 10px; }
@@ -68,24 +103,48 @@ textarea { resize: vertical; }
 .opts[open] summary { margin-bottom: 8px; }
 .opt-group + .opt-group { margin-top: 14px; }
 .opt-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.opt-head h4 { font: 600 13px/1 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 auto 0 0; }
+.opt-head h4 { font: 600 14px/1 var(--sans); margin: 0 auto 0 0; }
 .opt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 18px; }
 .opt { display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
 .opt.check { flex-direction: row; align-items: flex-start; gap: 8px; }
 .opt.check input { width: auto; margin-top: 3px; accent-color: var(--accent); }
 .opt input[type=number], .opt select { padding: 6px 9px; }
+.opt select { padding-right: 32px; background-position: right 10px center; }
+/* The open list. A browser with customizable selects (appearance: base-select) draws the list in the app's
+   style. Other browsers keep their own list, which works the same. */
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  select { align-items: center; min-height: 0; }
+  select::picker-icon { display: none; }   /* the arrow is the background image above */
+  ::picker(select) { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink);
+    padding: 4px; margin-top: 4px; box-shadow: 0 12px 32px rgb(0 0 0 / .18); font: 15px/1.4 var(--sans); }
+  select option { padding: 8px 10px; border-radius: 6px; cursor: pointer; gap: 8px; }
+  select option:hover, select option:focus-visible { background: color-mix(in srgb, var(--ink) 7%, transparent); outline: none; }
+  select option:checked { background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+  select option::checkmark { display: none; }
+}
 .opt .hint { font-size: 12px; color: var(--muted); }
-.opt.off { opacity: .45; }
-.opt.na { opacity: .45; }
+.opt-grid.rows { grid-template-columns: 1fr; gap: 12px; }
+.opt-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 18px; align-items: start; }
+.opt-kids { display: flex; gap: 12px; flex-wrap: wrap; }
+.opt-kids:empty { display: none; }
+.opt-kids .opt:not(.check) { width: 120px; }
+.opt-kids .opt.check { max-width: 250px; }
 .more textarea { margin-top: 8px; }
 .actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; margin-top: 10px; }
 
 .btn { font: 600 14px/1 var(--sans); border-radius: 999px; padding: 10px 18px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 .btn:disabled { opacity: .5; cursor: default; }
+.btn:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
 .btn-ink { background: var(--ink); color: var(--paper); }
 .btn-accent { background: var(--accent); color: var(--accent-ink); }
 .btn-line { background: transparent; color: var(--ink); border-color: var(--line); }
 .btn-quiet { background: transparent; color: var(--muted); }
+.btn-danger { background: var(--bad); color: var(--panel); }
+.ask { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); color: var(--ink); padding: 22px; width: min(420px, calc(100vw - 32px)); box-shadow: 0 18px 50px rgb(0 0 0 / .25); }
+.ask::backdrop { background: rgb(20 16 10 / .45); }
+.ask h3 { margin-bottom: 6px; }
+.ask .actions { margin-top: 18px; }
 .btn-quiet:hover { color: var(--bad); }
 .btn.small { padding: 6px 10px; font-size: 13px; }
 .wide { width: 100%; justify-content: center; }
@@ -107,7 +166,7 @@ textarea { resize: vertical; }
 figure { margin: 0; }
 figcaption { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
 audio { width: 100%; height: 38px; }
-#v-ref-card audio { margin-bottom: 10px; }
+#v-ref-card audio { margin: 10px 0; }
 
 .badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--muted); margin-right: auto; }
 .badge.trained { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
@@ -123,8 +182,106 @@ audio { width: 100%; height: 38px; }
 .error { color: var(--bad); margin: 0; }
 .log { font: 12px/1.45 var(--mono); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px; max-height: 220px; overflow: auto; white-space: pre-wrap; margin: 10px 0 0; }
 
+/* voice screen: each card is a row that opens */
+.fold { padding: 0; }
+.fold > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-radius: var(--radius); }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::after { content: "›"; color: var(--muted); font-size: 20px; line-height: 1; transition: transform .15s; }
+.fold[open] > summary::after { transform: rotate(90deg); }
+.fold > summary:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: -2px; }
+.fold > summary b { font-family: var(--serif); font-size: 17px; font-weight: 600; flex: none; }
+.fold > summary .why { color: var(--muted); font-size: 13px; flex: 1; min-width: 0; }
+.fold > .in { padding: 0 20px 20px; }
+.fold[data-locked] > summary { cursor: default; }
+.fold[data-locked] > summary b { color: var(--muted); }
+.fold[data-locked] > summary::after { content: none; }
+.num { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); display: grid; place-items: center; font-weight: 600; font-size: 13px; flex: none; color: var(--muted); }
+.num.done { background: var(--ok); border-color: var(--ok); color: var(--panel); }
+.num.now { border-color: var(--accent); color: var(--accent); }
+.say { font-size: 17px; }
+.take-acts { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: center; margin-top: 4px; }
+.take-acts .btn { padding-left: 0; text-decoration: none; }
+.take-acts .btn:hover { color: var(--ink); }
+.take-acts .pm { margin-left: auto; }
+.fold[data-fixed] > summary { cursor: default; }
+.fold[data-fixed] > summary::after { content: none; }
+.say-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 4px; }
+.takes-h { font-size: 16px; margin: 18px 0 0; }
+.takes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+/* one version: its name, a player of limited width, the settings used, the download button */
+/* the settings are before the player, because they are what makes this version */
+.takes li { display: grid; grid-template-columns: 76px auto minmax(220px, 1fr) auto auto; align-items: center; gap: 12px; border: 0; padding: 0; min-height: 38px; }
+.takes .wide-cell { grid-column: 2 / 5; }
+.takes .btn { white-space: nowrap; padding-right: 0; }
+.takes .tn { font-weight: 600; font-size: 13px; white-space: nowrap; }
+.sets { display: flex; flex-wrap: wrap; gap: 6px; }
+.set { font-size: 13px; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; padding: 4px 9px; background: var(--paper); white-space: nowrap; }
+.set b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.takes .made { white-space: nowrap; }
+/* The player is one pill, in the same style as the settings beside it. */
+.player { display: flex; align-items: center; gap: 10px; min-width: 0; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); padding: 3px 14px 3px 4px; }
+.player .play { all: unset; box-sizing: border-box; cursor: pointer; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+.player .play:hover { filter: brightness(1.1); }
+.player .play:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; }
+.player .play:disabled { background: var(--line); color: var(--muted); cursor: default; }
+.player input[type=range] { -webkit-appearance: none; appearance: none; flex: 1; min-width: 60px; height: 16px; padding: 0; border: 0; margin: 0; cursor: pointer;
+  background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--line) var(--p, 0%)) center / 100% 4px no-repeat; border-radius: 0; }
+.player input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--accent); }
+.player input[type=range]::-moz-range-thumb { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--accent); }
+.player input[type=range]::-moz-range-track { background: none; }
+.player input[type=range]:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); outline-offset: 2px; border-radius: 8px; }
+.player .ptime { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.takes .icon-btn { border: 1px solid var(--line); background: var(--paper); color: var(--ink); width: 32px; height: 32px; }
+.takes .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--paper); }
+.take-acts .hist { margin-left: auto; padding-right: 0; }
+.take-acts .hist[aria-expanded="true"] { color: var(--ink); }
+.takes.old { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); }
+.previews { margin-top: 8px; }
+.gen { border: 1.5px solid var(--accent); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 7%, transparent); padding: 14px 16px; margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
+.gen-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.gen-head b { font-family: var(--serif); font-size: 17px; }
+.gen-head span { font-variant-numeric: tabular-nums; }
+.gen .pt, .gen p { margin: 0; }
+.gen progress { width: 100%; height: 8px; accent-color: var(--accent); }
+.gen .steps { gap: 4px 0; }
+/* recording */
+#drop-recording, #drop-chosen { width: 100%; }
+.rec-time { font: 600 36px/1.1 var(--serif); font-variant-numeric: tabular-nums; margin: 6px 0 10px; }
+.rec-wave { width: 100%; height: 56px; display: block; }
+.rec-track { position: relative; height: 8px; border-radius: 4px; background: color-mix(in srgb, var(--ink) 10%, transparent); overflow: hidden; margin-top: 10px; }
+.rec-zone { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--ok) 40%, transparent); }
+.rec-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); opacity: .85; }
+.rec-scale { display: flex; justify-content: space-between; margin-top: 4px; }
+.rec-hint { margin: 10px 0 0; min-height: 20px; }
+.rec-box { border: 1.5px dashed var(--line); border-radius: var(--radius); padding: 18px 16px; text-align: center; margin-top: 12px; }
+.rec-box audio { margin: 10px 0 4px; }
+@media (prefers-reduced-motion: reduce) { .fold > summary::after { transition: none; } }
+
 @media (max-width: 760px) {
   .shell { grid-template-columns: 1fr; }
   .side { border-right: 0; border-bottom: 1px solid var(--line); }
-  .split, .pair { grid-template-columns: 1fr; }
+  .shell.side-off { grid-template-columns: 1fr; }
+  .shell.side-off .side { flex-direction: row; align-items: center; padding: 10px 16px; }
+  .shell.side-off .brand { margin-right: auto; }
+  .done-row.two { grid-template-columns: 1fr; }
+  .pair, .opt-row { grid-template-columns: 1fr; }
+  .opt-kids { padding-left: 24px; }
+  .fold > summary { flex-wrap: wrap; }
+  .fold > summary .why { flex-basis: 100%; order: 1; }
+  .fold > summary::after { margin-left: auto; }
+}
+
+/* These rules follow the width of the main column, not of the window: the sidebar changes that width. */
+@container (max-width: 720px) {
+  .takes li { grid-template-columns: 76px 1fr auto; }
+  .takes .player { grid-column: 2; grid-row: 1; }
+  .takes .icon-btn { grid-column: 3; grid-row: 1; }
+  .takes .sets { grid-column: 2; grid-row: 2; }
+  .takes .made { grid-column: 3; grid-row: 2; }
+  .takes .wide-cell { grid-column: 2 / 3; }
+  .done-row.two > .fold:not([open]) > summary .why { display: none; }
+  .done-row.two > .fold:not([open]) > summary::after { margin-left: auto; }
+  #v-train-card > summary { flex-wrap: wrap; }
+  #v-train-card > summary .why { flex-basis: 100%; order: 1; }
+  #v-train-card > summary::after { margin-left: auto; }
 }

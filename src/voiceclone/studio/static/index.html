@@ -10,80 +10,83 @@
 <body>
 <div class="shell">
   <aside class="side">
-    <div class="brand"><img class="mark" src="/static/logo.svg" alt="" aria-hidden="true">Voice studio</div>
-    <button id="new-voice" class="btn btn-ink wide">+ New voice</button>
-    <h2 class="side-h">Your voices</h2>
-    <ul id="voice-list" class="voice-list"></ul>
-    <p id="empty-list" class="muted small" hidden>No voices yet.</p>
+    <div class="brand"><button id="side-open" class="logo-btn" type="button" aria-label="Show the list of voices" title="Show the list of voices" disabled><img class="mark" src="/static/logo.svg" alt=""><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button><span class="side-more">Voice studio</span>
+      <button id="side-toggle" class="icon-btn side-more" type="button" aria-controls="side-body" aria-expanded="true" aria-label="Hide the list of voices" title="Hide the list of voices"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/></svg></button></div>
+    <button id="new-voice" class="btn btn-ink wide" aria-label="New voice">+<span class="side-more"> New voice</span></button>
+    <div id="side-body" class="side-more">
+      <h2 class="side-h">Your voices</h2>
+      <ul id="voice-list" class="voice-list"></ul>
+      <p id="empty-list" class="muted small" hidden>No voices yet.</p>
+    </div>
   </aside>
 
   <main class="main">
     <!-- create -->
-    <section id="view-create" class="view">
+    <section id="view-create" class="view" hidden>
       <header class="view-head">
-        <h1>Clone a voice</h1>
-        <p class="muted">Upload a short sample. It is cleaned of noise, then you can hear the voice say anything.</p>
+        <h1>New voice</h1>
+        <p class="muted">Add a short recording of one person. Then the voice can say any text that you type.</p>
       </header>
 
       <form id="create-form" class="card form" novalidate>
         <div class="row">
           <label class="field grow">
             <span class="label">Voice name</span>
-            <input id="f-name" name="name" maxlength="80" autocomplete="off" placeholder="e.g. Narrator, 1990s tapes">
+            <input id="f-name" name="name" maxlength="80" autocomplete="off" placeholder="For example: Grandpa's tapes">
           </label>
           <label class="field">
-            <span class="label">Language</span>
+            <span class="label">Language of the speaker</span>
             <select id="f-lang" name="lang"></select>
           </label>
         </div>
 
-        <div class="split">
-          <div class="tips">
-            <h3>What makes a good sample</h3>
-            <ol>
-              <li><b>5 to 45 seconds</b> of speech; 15 to 30 seconds works best.</li>
-              <li><b>Only this person</b> speaking: no other voices, music or bells.</li>
-              <li>Natural speech in their usual dialect, at a steady volume.</li>
-              <li>Old or noisy recordings are fine: noise and hum are cleaned off before cloning. Heavy echo is the one thing cleaning cannot fix.</li>
-            </ol>
-            <p class="muted small">For a clone that keeps the accent closely, add longer recordings after this step and train it.</p>
-          </div>
-
+        <div>
           <div id="drop" class="drop" tabindex="0">
             <div id="drop-idle">
               <p class="drop-title">Add a voice sample</p>
-              <p class="muted">Drop a file here, or</p>
+              <p class="muted">15 to 30 seconds of one person speaking</p>
               <div class="drop-actions">
                 <label class="btn btn-ink">Choose file<input id="f-file" type="file" accept="audio/*,.webm,.mp4" hidden></label>
                 <button type="button" id="rec-start" class="btn btn-line"><span class="dot"></span>Record</button>
               </div>
-              <p class="muted small">WAV, MP3, M4A, FLAC, OGG or WebM, up to <span id="max-mb">30</span> MB</p>
+              <p class="muted small">or drop a file here</p>
             </div>
-            <div id="drop-recording" hidden>
-              <p class="drop-title"><span class="dot live"></span>Recording <span id="rec-time">0:00</span></p>
-              <p class="muted small">Speak naturally. Stop between 15 and 45 seconds.</p>
-              <button type="button" id="rec-stop" class="btn btn-ink">Stop</button>
-            </div>
+            <div id="drop-recording" hidden></div>   <!-- recordPanel() in app.js fills this -->
             <div id="drop-chosen" hidden>
               <p class="drop-title" id="chosen-name"></p>
+              <p class="muted small">Listen before you continue.</p>
               <audio id="chosen-audio" controls></audio>
-              <button type="button" id="chosen-clear" class="btn btn-quiet small">Remove</button>
+              <div class="drop-actions">
+                <button type="button" id="chosen-again" class="btn btn-line small" hidden><span class="dot"></span>Record again</button>
+                <button type="button" id="chosen-clear" class="btn btn-quiet small">Remove</button>
+              </div>
             </div>
           </div>
+          <details class="more tips">
+            <summary>Tips for a good sample</summary>
+            <ul>
+              <li>15 to 30 seconds is best. The limits are 5 and 45 seconds.</li>
+              <li>One person only, with no other voices and no music.</li>
+              <li>Natural speech, at a steady volume.</li>
+              <li>Noise is fine: the studio removes it. Strong echo is the one thing it cannot remove.</li>
+              <li>To record, talk about your day or read a page aloud.</li>
+              <li>A file can be WAV, MP3, M4A, FLAC, OGG or WebM, up to <span id="max-mb">30</span> MB.</li>
+            </ul>
+          </details>
         </div>
 
         <details class="opts">
-          <summary>Cleaning and reference options</summary>
+          <summary>Advanced options</summary>
           <div class="opt-group" id="o-create-clean"></div>
           <div class="opt-group" id="o-create-reference"></div>
         </details>
 
         <p id="create-error" class="error" role="alert" hidden></p>
-        <div class="actions"><button id="create-submit" class="btn btn-accent" type="submit">Clone voice</button></div>
+        <div class="actions"><button id="create-submit" class="btn btn-accent" type="submit">Create voice</button></div>
       </form>
     </section>
 
-    <!-- voice -->
+    <!-- voice: the cards are the steps of a voice, in order. renderVoice() in app.js writes each summary line -->
     <section id="view-voice" class="view" hidden>
       <header class="view-head with-actions">
         <div>
@@ -96,63 +99,106 @@
       <ol id="v-steps" class="steps"></ol>
       <p id="v-error" class="error" role="alert" hidden></p>
 
-      <div class="card" id="v-audio-card" hidden>
-        <h3>Cleaning</h3>
-        <div class="pair">
-          <figure><figcaption>Uploaded</figcaption><audio id="a-original" controls preload="none"></audio></figure>
-          <figure><figcaption>After cleaning</figcaption><audio id="a-clean" controls preload="none"></audio></figure>
+      <div id="v-done" class="done-row">
+      <details class="card fold" id="v-audio-card" hidden>
+        <summary><span class="num" hidden></span><b></b><span class="why"></span><span class="pill" hidden></span></summary>
+        <div class="in">
+          <div class="pair">
+            <figure><figcaption>Before cleaning</figcaption><audio id="a-original" controls preload="none"></audio></figure>
+            <figure><figcaption>After cleaning</figcaption><audio id="a-clean" controls preload="none"></audio></figure>
+          </div>
+          <p class="muted small" id="v-clean-used"></p>
+          <details class="opts" id="v-reclean">
+            <summary>Clean again with other options</summary>
+            <div class="opt-group" id="o-voice-clean"></div>
+            <div class="opt-group" id="o-voice-reference"></div>
+            <p class="muted small">The studio writes down the words again after cleaning. Check them again.</p>
+            <div class="actions"><button id="v-reclean-go" class="btn btn-line">Clean again</button></div>
+          </details>
         </div>
-        <p class="muted small" id="v-clean-used"></p>
-        <details class="opts" id="v-reclean">
-          <summary>Clean again with other options</summary>
-          <div class="opt-group" id="o-voice-clean"></div>
-          <div class="opt-group" id="o-voice-reference"></div>
-          <p class="muted small">The reference clip may change, so its words are transcribed again.</p>
-          <div class="actions"><button id="v-reclean-go" class="btn btn-line">Clean again</button></div>
-        </details>
+      </details>
+
+      <details class="card fold" id="v-ref-card" hidden>
+        <summary><span class="num" hidden></span><b></b><span class="why"></span><span class="pill" hidden></span></summary>
+        <div class="in">
+          <p class="muted small">The voice is copied from this short clip of the sample. Play the clip. The words below must be the words you hear. Correct them if they are wrong.</p>
+          <audio id="a-reference" controls preload="none"></audio>
+          <textarea id="v-ref-text" rows="2" maxlength="1000" lang="kn" aria-label="Words of the clip"></textarea>
+          <p id="v-ref-error" class="error" role="alert" hidden></p>
+          <div class="actions"><span id="ref-saved" class="muted small" role="status" hidden>Saved</span><button id="v-ref-save" class="btn btn-line">Save words</button></div>
+        </div>
+      </details>
+
       </div>
 
-      <div class="card" id="v-ref-card" hidden>
-        <h3>Reference clip</h3>
-        <p class="muted small">The clone is modelled on this short part of the sample, not on the whole sample. The words below are the words of this clip only. They must match the clip exactly. Correct them if the transcription got anything wrong.</p>
-        <audio id="a-reference" controls preload="none"></audio>
-        <textarea id="v-ref-text" rows="2" maxlength="1000" lang="kn"></textarea>
-        <div class="actions"><span id="ref-saved" class="muted small" hidden>Saved</span><button id="v-ref-save" class="btn btn-line">Save words</button></div>
-      </div>
-
-      <div class="card" id="v-try-card" hidden>
-        <h3>Try the voice</h3>
-        <textarea id="v-say" rows="3" maxlength="400" lang="kn" placeholder="Type what the voice should say"></textarea>
-        <p class="muted small" id="v-say-count"></p>
-        <details class="opts">
-          <summary>Generation options</summary>
-          <div class="opt-group" id="o-generate"></div>
-        </details>
-        <div class="actions">
-          <span id="v-model-badge" class="badge"></span>
-          <button id="v-generate" class="btn btn-accent">Generate</button>
+      <details class="card fold" id="v-try-card" hidden>
+        <summary><span class="num" hidden></span><b></b><span class="why"></span><span class="pill" hidden></span></summary>
+        <div class="in">
+          <textarea id="v-say" class="say" rows="3" maxlength="400" lang="kn" placeholder="Type what the voice should say" aria-label="What the voice should say"></textarea>
+          <div class="say-foot muted small"><span id="v-say-count"></span><span id="v-say-len">0 / 400</span></div>
+          <p id="v-try-error" class="error" role="alert" hidden></p>
+          <div class="actions">
+            <span class="muted small" id="v-keys"></span>
+            <button id="v-generate" class="btn btn-accent">Generate</button>
+          </div>
+          <div id="v-now" class="gen" role="status" hidden>
+            <div class="gen-head"><b id="now-title"></b><span id="now-time" class="muted"></span></div>
+            <p id="now-text" class="pt"></p>
+            <progress id="now-bar"></progress>
+            <ol id="now-steps" class="steps"></ol>
+            <p id="now-note" class="muted small"></p>
+          </div>
+          <details class="opts">
+            <summary>Advanced options</summary>
+            <div class="opt-group" id="o-generate"></div>
+          </details>
+          <h3 class="takes-h">Results</h3>
+          <p class="muted small" id="v-no-takes">The results show here, the newest text first. Type a sentence and press Generate.</p>
+          <ul id="v-previews" class="previews"></ul>
         </div>
-        <ul id="v-previews" class="previews"></ul>
-      </div>
+      </details>
 
-      <div class="card" id="v-train-card" hidden>
-        <h3>Train a stronger clone</h3>
-        <p class="muted small">The instant clone copies the voice's colour but often not the accent. Training learns the accent from longer recordings: it needs at least <b id="min-min">8</b> minutes of this person speaking alone, after cleaning and filtering, and takes several hours. Other speakers in the recordings are filtered out using this voice's sample.</p>
-        <ul id="v-recordings" class="files"></ul>
-        <details class="opts">
-          <summary>Training options</summary>
-          <div class="opt-group" id="o-train"></div>
-        </details>
-        <div class="actions">
-          <label class="btn btn-line">Add recordings<input id="v-rec-files" type="file" accept="audio/*" multiple hidden></label>
-          <button id="v-train" class="btn btn-ink">Start training</button>
+      <details class="card fold" id="v-train-card" hidden>
+        <summary><span class="num" hidden></span><b></b><span class="why"></span><span class="pill" hidden></span></summary>
+        <div class="in">
+          <p class="muted small">The voice you hear now is made from the short sample only. It copies the colour of the voice, but frequently not the accent. To make it closer, add longer recordings of this person. Record them here, or add files. The total must be at least <b id="min-min">8</b> minutes of them speaking alone. The studio removes other speakers, then trains on the recordings. Training takes several hours.</p>
+          <ul id="v-recordings" class="files"></ul>
+          <details class="opts">
+            <summary>Advanced options</summary>
+            <div class="opt-group" id="o-train"></div>
+          </details>
+          <p id="v-train-error" class="error" role="alert" hidden></p>
+          <div id="v-rec-panel" class="rec-box" hidden></div>
+          <div id="v-rec-review" class="rec-box" hidden>
+            <p class="drop-title" id="v-rec-name"></p>
+            <p class="muted small">Listen, then add the recording or discard it. You cannot remove a recording after you add it.</p>
+            <audio id="v-rec-audio" controls></audio>
+            <div class="drop-actions">
+              <button type="button" id="v-rec-add" class="btn btn-ink">Add this recording</button>
+              <button type="button" id="v-rec-discard" class="btn btn-quiet">Discard</button>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" id="v-rec-start" class="btn btn-line"><span class="dot"></span>Record</button>
+            <label class="btn btn-line">Add files<input id="v-rec-files" type="file" accept="audio/*" multiple hidden></label>
+            <button id="v-train" class="btn btn-ink">Start training</button>
+          </div>
+          <p id="v-train-status" class="small" role="status"></p>
+          <pre id="v-train-log" class="log" hidden></pre>
         </div>
-        <p id="v-train-status" class="small"></p>
-        <pre id="v-train-log" class="log" hidden></pre>
-      </div>
+      </details>
     </section>
   </main>
 </div>
+<!-- the native dialog element keeps the focus inside it and closes on Escape -->
+<dialog id="ask" class="ask" aria-labelledby="ask-title" aria-describedby="ask-text">
+  <h3 id="ask-title"></h3>
+  <p id="ask-text" class="muted"></p>
+  <form method="dialog" class="actions">
+    <button class="btn btn-line" value="no" autofocus>Cancel</button>
+    <button id="ask-yes" class="btn btn-danger" value="yes"></button>
+  </form>
+</dialog>
 <script src="/static/app.js"></script>
 </body>
 </html>
