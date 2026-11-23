@@ -54,15 +54,19 @@ class Engine:
         """False when the next `synthesize` must load the model first, which takes minutes."""
         return self._synth is not None and self._synth[0] == lora
 
-    def synthesize(self, text: str, ref_wav, ref_text: str, lora: str | None = None, seed: int = 0,
-                   params: dict | None = None):
-        """Returns (waveform at 24 kHz, number of generated tokens). `params`: the
-        generation options (temperature, top_p, repetition_penalty, max_sec)."""
-        if self._synth is None or self._synth[0] != lora:
+    def load_synth(self, lora: str | None = None) -> None:
+        """Load the model for this adapter if it is not loaded. `synthesize` calls this too."""
+        if not self.synth_ready(lora):
             self.release()
             from voiceclone.svara.synth import Synthesizer
 
             self._synth = (lora, Synthesizer(self.model, lora))
+
+    def synthesize(self, text: str, ref_wav, ref_text: str, lora: str | None = None, seed: int = 0,
+                   params: dict | None = None):
+        """Returns (waveform at 24 kHz, number of generated tokens). `params`: the
+        generation options (temperature, top_p, repetition_penalty, max_sec)."""
+        self.load_synth(lora)
         synth = self._synth[1]
         p = GenParams(**{k: params[k] for k in ("temperature", "top_p", "repetition_penalty", "max_sec")}) \
             if params else GenParams()

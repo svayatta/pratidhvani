@@ -149,6 +149,9 @@ function recordPanel({ maxSec, zone, scale, hint, stopLabel, onStart, onDone, on
   const note = el("p", { className: "small muted rec-hint", role: "status" });
   let rec = null, cancelled = false;
   const stop = (cancel) => { if (rec && rec.state !== "inactive") { cancelled = cancel; rec.stop(); } };
+  // The lock is set before the wait for the microphone, so a second click does not start a second recorder.
+  // A cancel during the wait releases the lock, and start() then drops the stream.
+  const self = { cancel: () => { if (rec && rec.state !== "inactive") stop(true); else if (activeRec === self) activeRec = null; } };
   const panel = el("div", { className: "rec" },
     el("p", { className: "drop-title" }, el("span", { className: "dot live" }), "Recording"), time, cv, track,
     el("div", { className: "rec-scale muted small", ariaHidden: "true" }, ...scale.map((t) => el("span", { textContent: t }))), note,
@@ -158,18 +161,19 @@ function recordPanel({ maxSec, zone, scale, hint, stopLabel, onStart, onDone, on
 
   async function start() {
     if (activeRec) return;
+    activeRec = self;
     // The audio context starts here, in the click, before the wait for the microphone. A context that starts
     // later can stay suspended, and then the level reads as silence.
     const ctx = new AudioContext();
     ctx.resume().catch(() => {});
     let stream;
     try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }); }
-    catch { ctx.close(); return onDenied("The browser did not allow the microphone. Allow it in the address bar, then press Record again."); }
+    catch { ctx.close(); if (activeRec === self) activeRec = null; return onDenied("The browser did not allow the microphone. Allow it in the address bar, then press Record again."); }
+    if (activeRec !== self) { stream.getTracks().forEach((t) => t.stop()); ctx.close(); return; }   // the user left during the wait
     const parts = [];
     cancelled = false;
     rec = new MediaRecorder(stream);
-    const me = rec, self = { cancel: () => stop(true) };
-    activeRec = self;
+    const me = rec;
     onStart();
 
     // live level: one bar for each 1/15 s, newest on the right. It shows that the microphone hears the speaker.
@@ -244,8 +248,12 @@ const sampleRec = recordPanel({
     : "The recording stops at 45 seconds.",
   onStart: () => { showError("create-error", ""); $("drop-idle").hidden = true; $("drop-chosen").hidden = true; $("drop-recording").hidden = false; },
   onDone: (file, s) => {
+    // The server refuses a sample under 5 seconds, so a short recording does not become the sample.
+    if (s < REC_MIN_SEC) {
+      setChosen(null);
+      return showError("create-error", `The recording is ${Math.floor(s)} seconds long. The minimum is ${REC_MIN_SEC} seconds. Record again.`);
+    }
     setChosen(file, `Recording, ${fmtSec(s)}`, true);
-    if (s < REC_MIN_SEC) showError("create-error", `The recording is ${Math.round(s)} seconds long. The minimum is ${REC_MIN_SEC} seconds. Record again.`);
   },
   onCancel: () => setChosen(null),
   onDenied: (msg) => showError("create-error", msg),
@@ -421,7 +429,9 @@ function renderVoice(v) {
   // so "Make another version" adds a row at the end of its group and no group moves.
   const byText = new Map();
   [...v.previews].reverse().forEach((p) => byText.set(p.text, [...(byText.get(p.text) || []), p]));
-  const groups = [...byText.values()].reverse();
+  // The server puts each new batch first and keeps the batch in order, so the reverse walk turns a batch around.
+  // The sort puts it back: a batch has one `created` time for each take, and the seed counts up in a batch.
+  const groups = [...byText.values()].reverse().map((g) => g.sort((a, b) => a.created - b.created || a.seed - b.seed));
   const ul = $("v-previews");
   syncRows(ul, groups, (g) => g[0].id, (g) => groupRow(v, g[0].text));
   groups.forEach((g, n) => {

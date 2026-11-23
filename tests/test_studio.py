@@ -380,6 +380,22 @@ def test_a_take_records_its_progress_for_the_page(env):
     assert seen == [("running", "speaking", 0, 2), ("running", "speaking", 1, 2)]
 
 
+def test_a_take_shows_the_model_load_and_then_the_first_sentence(env):
+    # The load takes minutes. If "loading" stays during sentence 1, the page never shows "Speak sentence 1".
+    client, _, engine, drain = env
+    vid = create(client).json()["id"]
+    drain()
+    seen = []
+    stage = lambda: client.get(f"/api/voices/{vid}").json()["previews"][0]["stage"]
+    real = engine.synthesize
+    engine.synth_ready = lambda lora: False
+    engine.load_synth = lambda lora: seen.append(("load", stage()))
+    engine.synthesize = lambda *a, **kw: seen.append(("speak", stage())) or real(*a, **kw)
+    client.post(f"/api/voices/{vid}/previews", json={"text": "ಒಂದು."})
+    drain()
+    assert seen == [("load", "loading"), ("speak", "speaking")]
+
+
 def test_page_and_script_are_revalidated_on_each_load(env):
     client = env[0]
     assert client.get("/").headers["cache-control"] == "no-cache"

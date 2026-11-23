@@ -144,10 +144,12 @@ class Studio:
         lora = v["train"]["adapter"] if p["trained"] else None
         sentences = split_sentences(p["text"]) or [p["text"]]   # ponytail: one sentence longer than max_sec is still cut
         # Progress for the page: `stage` is loading, speaking or joining; `sentence` counts the finished sentences.
-        # The model loads inside the first `synthesize` call, so "loading" covers the first sentence too.
         loaded = getattr(self.engine, "synth_ready", lambda lora: True)(lora)
         self._set_preview(vid, pid, status="running", stage="speaking" if loaded else "loading",
                           sentence=0, sentences=len(sentences))
+        if not loaded:   # the load is its own step, so the page shows "speaking" when the first sentence starts
+            self.engine.load_synth(lora)
+            self._set_preview(vid, pid, stage="speaking")
         t0 = time.time()
         gap = np.zeros(int(SENTENCE_GAP_SEC * TTS_SR), np.float32)
         parts = []
