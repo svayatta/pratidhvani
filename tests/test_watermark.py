@@ -53,6 +53,58 @@ def test_mark_survives_a_cropped_quieter_excerpt(wm):
     assert wm.detect(0.4 * y[SR: 4 * SR], SR).ours
 
 
+def test_a_long_unmarked_recording_is_not_claimed(wm):
+    # the detector looks for the mark in every stretch of the file, so a long
+    # genuine recording gives it many chances to be wrong: none may count
+    speech = [x for i in range(12) for x in (voice_like(4.0, seed=i), np.zeros(SR, np.float32))]
+    assert wm.detect(np.concatenate(speech), SR).probability < 0.1
+
+
+def test_a_clone_cut_into_a_genuine_recording_is_found(wm):
+    # three cloned seconds inside a minute of real speech are 5% of the file:
+    # judged by the share of the whole file, the splice would pass as genuine
+    spliced = np.concatenate([voice_like(30.0, seed=1), wm.embed(voice_like(3.0), SR), voice_like(27.0, seed=2)])
+    d = wm.detect(spliced, SR)
+    assert d.ours, d
+
+
+@pytest.mark.parametrize("take_sec, slot_sec", [(3.0, 3.5), (2.0, 10.0), (3.0, 20.0), (0.5, 10.0)],
+                         ids=["in-step", "sparse", "very-sparse", "short-and-sparse"])
+def test_long_form_files_are_marked(wm, tmp_path, take_sec, slot_sec):
+    """`long-form` places each marked take at its chunk's original start in
+    a buffer of silence (cloned.wav), and interleaves each unmarked original
+    line with its clone (ab.wav). A speaker who talks for a few seconds now
+    and then leaves cloned.wav mostly silent, and ab.wav is half genuine
+    recording by design. Both hold cloned speech, so both must be recognised
+    as ours; original.wav is the real recording and must not be."""
+    import soundfile as sf
+
+    from voiceclone.jsonl import write_jsonl
+    from voiceclone.longform import long_form
+
+    n = 4
+    d = tmp_path / "chunks"
+    d.mkdir()
+    write_jsonl(d / "segments.jsonl", [{"file": f"c{i}.wav", "start": i * slot_sec,
+                                        "end": i * slot_sec + min(take_sec, slot_sec)} for i in range(n)])
+    write_jsonl(d / "transcripts.jsonl", [{"file": f"c{i}.wav", "text": f"ವಾಕ್ಯ {i}"} for i in range(n)])
+    sf.write(tmp_path / "source.wav", voice_like(n * slot_sec + 1), SR)
+
+    class Synth:   # stands in for Synthesizer: generate returns marked takes
+        def reference(self, ref_wav):
+            return None
+
+        def generate(self, text, ref_tokens, ref_text, seed=0, p=None):
+            return wm.embed(voice_like(take_sec, seed=seed), SR), {}
+
+    out = long_form(Synth(), d, tmp_path / "source.wav", None, "", tmp_path / "out", log=lambda *a: None)
+    for name in ("cloned.wav", "ab.wav"):
+        wav, sr = sf.read(out / name, dtype="float32")   # the 16-bit files
+        found = wm.detect(wav, sr)
+        assert found.ours, (name, found)
+    assert not wm.detect(sf.read(out / "original.wav", dtype="float32")[0], SR).marked
+
+
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs ffmpeg")
 @pytest.mark.parametrize("name,args", [
     # clones get shared in these forms; a mark that one of them strips is no use
@@ -101,10 +153,10 @@ def test_every_generated_take_is_marked(wm, monkeypatch):
 @pytest.mark.parametrize("n, sentence_sec", [(4, 3.0), (6, 0.5), (10, 0.5), (8, 0.3)])
 def test_studio_preview_of_several_sentences_is_marked(wm, tmp_path, n, sentence_sec):
     """The file the user plays is the join of the takes with pauses between
-    them. The detector reports the share of the file that is marked. With
-    only the marks of the takes, ten 0.5 s sentences score below the
-    threshold, so the studio marks the join. The join must stay ours and
-    the two marks together must stay quiet."""
+    them. The detector reports the marked share of the most-marked two
+    seconds. With only the marks of the takes, eight 0.3 s sentences score
+    0.63 against a threshold of 0.5, so the studio marks the join. The join
+    must stay ours and the two marks together must stay quiet."""
     import soundfile as sf
 
     from voiceclone.studio.jobs import SENTENCE_GAP_SEC, Studio
