@@ -135,3 +135,93 @@ def test_studio_preview_of_several_sentences_is_marked(wm, tmp_path, n, sentence
     clean = np.concatenate([x for t in takes for x in (gap, t)][1:])
     assert len(wav) == len(clean)
     assert 10 * np.log10((clean ** 2).sum() / ((wav - clean) ** 2).sum()) > 20
+
+
+# take / slot seconds for four takes. `long_form` places each take at its
+# chunk's start and fills the rest with silence, and the detector scores the
+# share of the whole file that is marked, so the sparse layouts are the hard ones.
+LONG_FORM_LAYOUTS = {
+    "in-step": (3.0, 3.5),
+    "short-gaps": (1.0, 1.5),
+    "takes-run-long": (4.0, 2.0),
+    "sparse": (2.0, 10.0),        # a few seconds of speech every ten, as in an interview
+    "very-sparse": (3.0, 20.0),
+}
+# Known to come back as not ours today, though the tag decodes intact: see
+# https://github.com/svayatta/pratidhvani/issues/63. Strict, so each one fails
+# loudly once the detector or long_form is fixed and the mark can be removed.
+# ab.wav interleaves unmarked original lines with the clones; whether it should
+# count as ours is still open in #63, and these assume it should.
+NOT_YET_OURS = {
+    ("cloned.wav", "sparse"), ("cloned.wav", "very-sparse"),
+    ("ab.wav", "in-step"), ("ab.wav", "short-gaps"), ("ab.wav", "sparse"), ("ab.wav", "very-sparse"),
+}
+
+
+def _long_form_cases():
+    for name in ("cloned.wav", "ab.wav"):
+        for layout in LONG_FORM_LAYOUTS:
+            marks = [pytest.mark.xfail(strict=True, raises=AssertionError, reason="#63: share-of-file threshold")] \
+                if (name, layout) in NOT_YET_OURS else []
+            yield pytest.param(name, layout, marks=marks, id=f"{name}-{layout}")
+
+
+@pytest.fixture(scope="module")
+def long_form_out(wm, tmp_path_factory):
+    """Runs `long-form` once per layout with AudioSeal-marked takes and an
+    unmarked source, and returns its output folder."""
+    import soundfile as sf
+
+    from voiceclone.jsonl import write_jsonl
+    from voiceclone.longform import long_form
+
+    class Synth:   # stands in for Synthesizer: generate returns marked takes
+        def __init__(self, take_sec):
+            self.take_sec = take_sec
+
+        def reference(self, ref_wav):
+            return None
+
+        def generate(self, text, ref_tokens, ref_text, seed=0, p=None):
+            return wm.embed(voice_like(self.take_sec, seed=seed), SR), {}
+
+    done = {}
+
+    def get(layout):
+        if layout not in done:
+            take_sec, slot_sec = LONG_FORM_LAYOUTS[layout]
+            n = 4
+            tmp = tmp_path_factory.mktemp(layout)
+            d = tmp / "chunks"
+            d.mkdir()
+            write_jsonl(d / "segments.jsonl", [{"file": f"c{i}.wav", "start": i * slot_sec,
+                                                "end": i * slot_sec + min(take_sec, slot_sec)} for i in range(n)])
+            write_jsonl(d / "transcripts.jsonl", [{"file": f"c{i}.wav", "text": f"ವಾಕ್ಯ {i}"} for i in range(n)])
+            sf.write(tmp / "source.wav", voice_like(n * slot_sec + 1), SR)   # unmarked, like a real recording
+            done[layout] = long_form(Synth(take_sec), d, tmp / "source.wav", None, "", tmp / "out", log=lambda *a: None)
+        return done[layout]
+
+    return get
+
+
+@pytest.mark.parametrize("name, layout", list(_long_form_cases()))
+def test_long_form_output_is_marked(wm, long_form_out, name, layout):
+    """`long-form` writes cloned.wav by copying each marked take into a
+    buffer of silence at its chunk's start, and ab.wav by interleaving each
+    original line with its clone. Both contain cloned speech, so both must be
+    recognised as ours, however much silence or original audio surrounds the
+    takes."""
+    import soundfile as sf
+
+    wav, sr = sf.read(long_form_out(layout) / name, dtype="float32")   # the 16-bit file
+    d = wm.detect(wav, sr)
+    assert d.ours, d
+
+
+@pytest.mark.parametrize("layout", LONG_FORM_LAYOUTS)
+def test_long_form_original_is_not_claimed(wm, long_form_out, layout):
+    # the original next to the clone is a real recording and must not be claimed
+    import soundfile as sf
+
+    wav, sr = sf.read(long_form_out(layout) / "original.wav", dtype="float32")
+    assert not wm.detect(wav, sr).marked
