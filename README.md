@@ -58,7 +58,8 @@ Set up the repository and run the tests. This needs no GPU, no models and no
 recordings, and takes a few minutes. To use the app without setting up the
 source, run a published image instead: see [Docker](#docker).
 
-You need Python 3.10 or newer (3.12 is tested), [uv](https://docs.astral.sh/uv/)
+You need Python 3.10 or newer (CI tests 3.10, 3.11 and 3.12; newer versions
+are expected to work but are not tested), [uv](https://docs.astral.sh/uv/)
 and [ffmpeg](https://ffmpeg.org/) on your `PATH`. On a Mac:
 
 ```bash
@@ -109,8 +110,12 @@ aligner needs a C++ compiler once (`xcode-select --install` on a Mac,
 [Clone a voice from a recording](#clone-a-voice-from-a-recording).
 
 `constraints.txt` pins the exact versions behind the reference results
-(Python 3.12, macOS arm64). Leave it out to take the newest releases, at the
-risk of behaviour changes. The extras are `tts` for synthesis and training,
+(Python 3.12, macOS arm64), and installs on Python 3.12 or newer. Leave it out
+to take the newest releases, at the risk of behaviour changes. On 3.10 and 3.11
+you must leave it out; CI tests those versions against
+`ci/constraints-3.10.txt` and `ci/constraints-3.11.txt`, which pin only the
+`dev` extra. The extras are `tts`
+for synthesis and training,
 `align` for forced alignment and character error, `speaker` for voiceprints,
 `closeness` for the closeness report's identity and naturalness models,
 `asr` for IndicConformer, `web` for the studio, `dev` for the tests, and `all`

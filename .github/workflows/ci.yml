@@ -10,9 +10,18 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  unit:
+    # Every Python that `requires-python` claims, each against pinned versions so
+    # an upstream release cannot turn a required check red. constraints.txt pins
+    # the 3.12 reference environment (numpy 2.5 needs 3.12+); 3.10 and 3.11 use
+    # ci/constraints-<version>.txt, compiled for the `dev` extra.
+    name: test (${{ matrix.python }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -21,13 +30,30 @@ jobs:
       - name: Install ffmpeg
         run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
       - name: Install the package
+        env:
+          PYTHON: ${{ matrix.python }}
         run: |
-          uv venv --python 3.12
-          uv pip install -e ".[dev]" -c constraints.txt
+          uv venv --python "$PYTHON"
+          if [ "$PYTHON" = 3.12 ]; then pins=constraints.txt; else pins="ci/constraints-$PYTHON.txt"; fi
+          uv pip install -e ".[dev]" -c "$pins"
+          uv pip freeze
       - name: Repository rules (no audio, weights, home paths or sys.path edits; valid recipe)
         run: .venv/bin/python ci/check_hygiene.py
       - name: Tests
         run: .venv/bin/python -m pytest -q
+
+  test:
+    # The check name branch protection requires: passes only if every `unit` leg
+    # did. `if: always()` matters, since a job skipped after a failed leg would
+    # count as passing.
+    if: always()
+    needs: unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - env:
+          RESULT: ${{ needs.unit.result }}
+        run: test "$RESULT" = success
 
   changes:
     # Is this a docs-only pull request (Markdown, docs/, LICENSE, NOTICE)? Then
