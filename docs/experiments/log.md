@@ -3,6 +3,13 @@
 One row per experiment. New experiments are added by their pull request,
 with the quality-gate report linked. Rows before EXP-009 predate the gate.
 
+## EXP-009 & EXP-010 (3 Nov 2026)
+
+| Run | Change | Similarity | Listener | What it suggested |
+|---|---|---|---|---|
+| 009 | Human verbatim forced-aligned transcript (`DOC-0004.rtf`), MMS CTC alignment, pitch window 122.8-208.9 Hz, LoRA Rank 32 (5 epochs, lr 1.5e-4) | 0.51 (non-leaky, against ref) | 0% (rejected) | Mumbled and slurred like a drunk person; approximate RTF timestamps (15s, 20s, 45s) aligned text to non-speech harmonium intro drone. PR closed. |
+| 010 | Return to clean VAD phone recording corpus (`clips_exp7`), LoRA Rank 32 (step 105/126, lr 1.2e-4, max-ref-sec 6.5s) | 0.67 (record similarity) | ~25% (plateaued) | Restored clean articulation (all clauses spoken, duration 8.19s) and accent improved over EXP-009, but vocal timbre resemblance plateaued at baseline (~25%). |
+
 ## EXP-001 to EXP-008 (31 Oct - 2 Nov 2026, before the gate)
 
 These runs were scored on one sentence, one seed and a different
