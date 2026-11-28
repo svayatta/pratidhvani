@@ -17,6 +17,7 @@ SR = 16000            # AudioSeal works at 16 kHz; other rates are resampled to 
 TAG = 0xA51C          # 16-bit message meaning "made with pratidhvani"
 MIN_SAMPLES = 1600    # 0.1 s at 16 kHz; anything shorter is left as it is
 DETECT_THRESHOLD = 0.5
+WINDOW_SEC = 2.0      # a file is marked if any stretch this long is; see Watermark.detect
 MAX_BIT_ERRORS = 2
 
 
@@ -28,8 +29,8 @@ def tag_bits(tag: int = TAG):
 
 @dataclass
 class Detection:
-    probability: float    # share of the audio the detector finds marked, 0..1
-    bit_errors: int       # how many of the 16 message bits differ from our tag
+    probability: float    # share the detector finds marked in the most-marked WINDOW_SEC of the audio, 0..1
+    bit_errors: int       # how many of the 16 message bits, read from the marked audio, differ from our tag
 
     @property
     def marked(self) -> bool:
@@ -78,6 +79,11 @@ class Watermark:
         return np.clip((x + mark).view(-1).numpy(), -1.0, 1.0)
 
     def detect(self, wav: np.ndarray, sr: int) -> Detection:
+        """Find the mark anywhere in the audio. The score is the marked share
+        of the most-marked WINDOW_SEC, not of the whole file: `long-form`
+        puts marked takes between long silences and next to the unmarked
+        original, and a clone can be cut into a genuine recording. A
+        whole-file share reports all of those as unmarked."""
         import torch
 
         if self._det is None:
@@ -86,6 +92,17 @@ class Watermark:
             self._det = AudioSeal.load_detector("audioseal_detector_16bits").eval()
         x = torch.from_numpy(np.ascontiguousarray(wav, dtype=np.float32)).view(1, 1, -1)
         with torch.inference_mode():
-            p, msg = self._det.detect_watermark(self._resample(x, sr, SR))
-        errors = int((msg.round().int().cpu() != tag_bits()).sum())
+            # per sample: two detection units, then one unit per message bit.
+            # AudioSeal's detect_watermark pools both over the whole file.
+            out = self._det.detector(self._resample(x, sr, SR))[0]
+        marked = out[1] > out[0]
+        n = int(WINDOW_SEC * SR)
+        if len(marked) > n:
+            count = torch.cat([torch.zeros(1, dtype=torch.long), marked.long().cumsum(0)])
+            p = (count[n:] - count[:-n]).max() / n
+        else:
+            p = marked.float().mean()
+        # the unmarked part of a file carries no message, only noise that would spoil the reading
+        bits = out[2:, marked] if marked.any() else out[2:]
+        errors = int(((bits.mean(dim=1) > 0).int() != tag_bits()[0]).sum())
         return Detection(round(float(p), 3), errors)

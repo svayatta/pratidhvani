@@ -424,6 +424,12 @@ exits 1 if any file has another AudioSeal mark or no mark. Pass `--json` for
 a machine-readable list with `file`, `verdict`, `probability`, `bit_errors`
 and `ours` fields.
 
+The detector score (`probability`) is the marked share of the most-marked two
+seconds of the file, not of the whole file. A file counts as made with
+pratidhvani when it holds cloned speech anywhere: a clone cut into a longer
+genuine recording, `long-form`'s `cloned.wav` with long silences between the
+takes, and its `ab.wav`, where each original line is followed by its clone.
+
 It sits about 26 dB below the voice, and genuine recordings of the speaker
 scored 0. Every build checks that it survives the ways clips get shared
 (`tests/test_watermark.py`):
@@ -432,8 +438,10 @@ scored 0. Every build checks that it survives the ways clips get shared
 | --- | --- |
 | MP3 or AAC at 32 kbps | 1.00 |
 | Telephone-band audio (8 kHz) | 1.00 |
-| A messaging-app voice note (Opus, 16 kbps) | about 0.7 |
+| A messaging-app voice note (Opus, 16 kbps) | about 0.8 |
 | A cropped, quieter excerpt | found |
+| Three cloned seconds inside a minute of other speech | found |
+| `long-form` output with 3 s takes 20 s apart | found |
 
 Scores are from a synthetic voice-like test signal, so real recordings will
 vary.

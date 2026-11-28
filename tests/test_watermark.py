@@ -53,6 +53,21 @@ def test_mark_survives_a_cropped_quieter_excerpt(wm):
     assert wm.detect(0.4 * y[SR: 4 * SR], SR).ours
 
 
+def test_a_long_unmarked_recording_is_not_claimed(wm):
+    # the detector looks for the mark in every stretch of the file, so a long
+    # genuine recording gives it many chances to be wrong: none may count
+    speech = [x for i in range(12) for x in (voice_like(4.0, seed=i), np.zeros(SR, np.float32))]
+    assert wm.detect(np.concatenate(speech), SR).probability < 0.1
+
+
+def test_a_clone_cut_into_a_genuine_recording_is_found(wm):
+    # three cloned seconds inside a minute of real speech are 5% of the file:
+    # judged by the share of the whole file, the splice would pass as genuine
+    spliced = np.concatenate([voice_like(30.0, seed=1), wm.embed(voice_like(3.0), SR), voice_like(27.0, seed=2)])
+    d = wm.detect(spliced, SR)
+    assert d.ours, d
+
+
 @pytest.mark.skipif(not shutil.which("ffmpeg"), reason="needs ffmpeg")
 @pytest.mark.parametrize("name,args", [
     # clones get shared in these forms; a mark that one of them strips is no use
@@ -101,10 +116,10 @@ def test_every_generated_take_is_marked(wm, monkeypatch):
 @pytest.mark.parametrize("n, sentence_sec", [(4, 3.0), (6, 0.5), (10, 0.5), (8, 0.3)])
 def test_studio_preview_of_several_sentences_is_marked(wm, tmp_path, n, sentence_sec):
     """The file the user plays is the join of the takes with pauses between
-    them. The detector reports the share of the file that is marked. With
-    only the marks of the takes, ten 0.5 s sentences score below the
-    threshold, so the studio marks the join. The join must stay ours and
-    the two marks together must stay quiet."""
+    them. The detector reports the marked share of the most-marked two
+    seconds. With only the marks of the takes, eight 0.3 s sentences score
+    0.63 against a threshold of 0.5, so the studio marks the join. The join
+    must stay ours and the two marks together must stay quiet."""
     import soundfile as sf
 
     from voiceclone.studio.jobs import SENTENCE_GAP_SEC, Studio
@@ -138,32 +153,17 @@ def test_studio_preview_of_several_sentences_is_marked(wm, tmp_path, n, sentence
 
 
 # take / slot seconds for four takes. `long_form` places each take at its
-# chunk's start and fills the rest with silence, and the detector scores the
-# share of the whole file that is marked, so the sparse layouts are the hard ones.
+# chunk's start and fills the rest with silence, so in the sparse layouts most
+# of cloned.wav is silence. ab.wav interleaves unmarked original lines with
+# the clones, so about half of it is unmarked in every layout.
 LONG_FORM_LAYOUTS = {
     "in-step": (3.0, 3.5),
     "short-gaps": (1.0, 1.5),
     "takes-run-long": (4.0, 2.0),
     "sparse": (2.0, 10.0),        # a few seconds of speech every ten, as in an interview
     "very-sparse": (3.0, 20.0),
+    "short-and-sparse": (0.5, 10.0),
 }
-# Known to come back as not ours today, though the tag decodes intact: see
-# https://github.com/svayatta/pratidhvani/issues/63. Strict, so each one fails
-# loudly once the detector or long_form is fixed and the mark can be removed.
-# ab.wav interleaves unmarked original lines with the clones; whether it should
-# count as ours is still open in #63, and these assume it should.
-NOT_YET_OURS = {
-    ("cloned.wav", "sparse"), ("cloned.wav", "very-sparse"),
-    ("ab.wav", "in-step"), ("ab.wav", "short-gaps"), ("ab.wav", "sparse"), ("ab.wav", "very-sparse"),
-}
-
-
-def _long_form_cases():
-    for name in ("cloned.wav", "ab.wav"):
-        for layout in LONG_FORM_LAYOUTS:
-            marks = [pytest.mark.xfail(strict=True, raises=AssertionError, reason="#63: share-of-file threshold")] \
-                if (name, layout) in NOT_YET_OURS else []
-            yield pytest.param(name, layout, marks=marks, id=f"{name}-{layout}")
 
 
 @pytest.fixture(scope="module")
@@ -204,7 +204,8 @@ def long_form_out(wm, tmp_path_factory):
     return get
 
 
-@pytest.mark.parametrize("name, layout", list(_long_form_cases()))
+@pytest.mark.parametrize("layout", LONG_FORM_LAYOUTS)
+@pytest.mark.parametrize("name", ["cloned.wav", "ab.wav"])
 def test_long_form_output_is_marked(wm, long_form_out, name, layout):
     """`long-form` writes cloned.wav by copying each marked take into a
     buffer of silence at its chunk's start, and ab.wav by interleaving each

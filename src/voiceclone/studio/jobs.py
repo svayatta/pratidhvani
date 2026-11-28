@@ -161,8 +161,9 @@ class Studio:
         wav = np.concatenate(parts[1:])
         if len(parts) > 2:
             self._set_preview(vid, pid, stage="joining", sentence=len(sentences))
-            # The pauses carry no mark, and the detector scores the marked share of the file.
-            # A join of short takes can thus fall below the threshold. One mark on the join prevents this.
+            # The pauses carry no mark, and the detector scores the marked share of the most-marked
+            # two seconds. A join of very short takes scores only a little above the threshold there.
+            # One mark on the join keeps it well clear.
             wav = self.engine.watermark(wav)
         (d / "previews").mkdir(exist_ok=True)
         write_wav(d / "previews" / f"{pid}.wav", wav, TTS_SR)
